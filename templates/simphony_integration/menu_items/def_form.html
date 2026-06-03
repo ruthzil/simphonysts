@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <h2><i class="bi bi-file-text"></i> {{ page_title }}</h2>
+        <hr>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label>Object Num *</label>
+                        <input type="number" name="object_num" class="form-control" required 
+                               value="{{ definition.objectNum|default:'' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label>Menu Item Master *</label>
+                        <select name="master_obj_num" class="form-control" required>
+                            <option value="">Selecione...</option>
+                            {% for master in master_items %}
+                            <option value="{{ master.objectNum }}" 
+                                {% if definition.menuItemMasterObjNum == master.objectNum %}selected{% endif %}>
+                                {{ master.objectNum }} - {{ master.name.pt-BR|default:master.name.en-US }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label>Nome *</label>
+                        <input type="text" name="name" class="form-control" required 
+                               value="{{ definition.name|default:'' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label>Descrição</label>
+                        <textarea name="description" class="form-control" rows="3">{{ definition.description|default:'' }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label>Tempo de Preparo (minutos)</label>
+                        <input type="number" name="preparation_time" class="form-control" 
+                               value="{{ definition.preparationTime|default:'0' }}">
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="is_active" class="form-check-input" 
+                               {% if definition.isActive %}checked{% endif %}>
+                        <label class="form-check-label">Ativo</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                    <a href="{% url 'simphony:menu_item_def' %}" class="btn btn-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

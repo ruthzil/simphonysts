@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Configurações - Simphony STS{% endblock %}
+
+{% block content %}
+<h1>Configurações</h1>
+<div class="alert alert-info">
+    <strong>Configurações carregadas do arquivo .env</strong>
+</div>
+<div class="card">
+    <div class="card-body">
+        <h5>Oracle Simphony Configurations</h5>
+        <ul class="list-group mt-3">
+            <li class="list-group-item">
+                <strong>API URL:</strong> {{ api_url|default:"Configurada no .env" }}
+            </li>
+            <li class="list-group-item">
+                <strong>STS API URL:</strong> {{ sts_url|default:"Configurada no .env" }}
+            </li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

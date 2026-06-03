@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<h1 class="mb-4"><i class="bi bi-exclamation-triangle text-danger"></i> {{ title }}</h1>
+
+<div class="card">
+    <div class="card-body">
+        <p class="lead">Tem certeza que deseja excluir este menu item?</p>
+        
+        <table class="table table-bordered">
+            <tr><th width="200">ID</th><td>{{ menu_item.objectNum }}</td></tr>
+            <tr><th>Nome</th><td>{{ menu_item.name.en_US|default:menu_item.name }}</td></tr>
+            <tr><th>Preço</th><td>R$ {{ menu_item.price|floatformat:2 }}</td></tr>
+        </table>
+        
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-trash"></i> Confirmar Exclusão
+            </button>
+            <a href="{% url 'simphony_integration:menu_list' %}" class="btn btn-secondary">
+                Cancelar
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}

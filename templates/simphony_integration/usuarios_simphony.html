@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}Usuários Simphony EMC{% endblock %}
+{% block content %}
+<h2><i class="bi bi-cloud"></i> Usuários do Simphony EMC Cloud</h2>
+
+{% if resultado.success %}
+    <div class="alert alert-success">
+        <i class="bi bi-check-circle"></i> Total de usuários encontrados: {{ resultado.count }}
+    </div>
+    
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in resultado.employees %}
+                <tr>
+                    <td>{{ emp.objectNum|default:emp.id }}</td>
+                    <td>{{ emp.firstName }} {{ emp.lastName }}</td>
+                    <td>{{ emp.email|default:"N/A" }}</td>
+                    <td>
+                        <span class="badge bg-success">Ativo</span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center">Nenhum usuário encontrado</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle"></i> Erro: {{ resultado.error }}
+    </div>
+{% endif %}
+
+<a href="{% url 'simphony_integration:dashboard' %}" class="btn btn-secondary">
+    <i class="bi bi-arrow-left"></i> Voltar
+</a>
+{% endblock %}

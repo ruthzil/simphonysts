@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <h2><i class="bi bi-person-badge"></i> {{ page_title }}</h2>
+        <hr>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label>Object Num *</label>
+                                <input type="number" name="object_num" class="form-control" required 
+                                       value="{{ employee.objectNum|default:'' }}">
+                                <small class="text-muted">ID único do funcionário</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label>Status</label>
+                                <select name="status" class="form-control">
+                                    <option value="Active" {% if employee.isDeleted == False %}selected{% endif %}>Ativo</option>
+                                    <option value="Inactive" {% if employee.isDeleted == True %}selected{% endif %}>Inativo</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label>First Name *</label>
+                                <input type="text" name="first_name" class="form-control" required 
+                                       value="{{ employee.firstName|default:'' }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label>Last Name *</label>
+                                <input type="text" name="last_name" class="form-control" required 
+                                       value="{{ employee.lastName|default:'' }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label>Middle Name</label>
+                                <input type="text" name="middle_name" class="form-control" 
+                                       value="{{ employee.middleName|default:'' }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label>Check Name *</label>
+                                <input type="text" name="check_name" class="form-control" required 
+                                       value="{{ employee.checkName|default:'' }}">
+                                <small class="text-muted">Nome para exibição em recibos</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label>User Name *</label>
+                                <input type="text" name="user_name" class="form-control" required 
+                                       value="{{ employee.userName|default:'' }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label>Email</label>
+                                <input type="email" name="email" class="form-control" 
+                                       value="{{ employee.email|default:'' }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label>Language</label>
+                                <select name="language" class="form-control">
+                                    <option value="1" {% if employee.languageObjNum == 1 %}selected{% endif %}>English</option>
+                                    <option value="2" {% if employee.languageObjNum == 2 %}selected{% endif %}>Portuguese</option>
+                                    <option value="3" {% if employee.languageObjNum == 3 %}selected{% endif %}>Spanish</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label>Country</label>
+                                <select name="country" class="form-control">
+                                    <option value="US" {% if employee.country == 'US' %}selected{% endif %}>United States</option>
+                                    <option value="BR" {% if employee.country == 'BR' %}selected{% endif %}>Brazil</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label>Time Zone</label>
+                                <select name="timezone" class="form-control">
+                                    <option value="-3">(UTC-03:00) Sao Paulo</option>
+                                    <option value="-5">(UTC-05:00) Eastern Time</option>
+                                    <option value="-8">(UTC-08:00) Pacific Time</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label>Enterprise Role</label>
+                                <select name="enterprise_role" class="form-control">
+                                    <option value="1">System Administrator</option>
+                                    <option value="2">Manager</option>
+                                    <option value="3">Employee</option>
+                                    <option value="4">Cashier</option>
+                                    <option value="5">Kitchen Staff</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label>Enterprise Level</label>
+                                <select name="enterprise_level" class="form-control">
+                                    <option value="Corporate">Corporate</option>
+                                    <option value="Regional">Regional</option>
+                                    <option value="Local">Local</option>
+                                    <option value="Store">Store</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label>Payroll ID</label>
+                                <input type="text" name="payroll_id" class="form-control" 
+                                       value="{{ employee.payrollId|default:'' }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label>PIN (4 digits)</label>
+                                <input type="password" name="pin" class="form-control" maxlength="4" 
+                                       placeholder="****">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        <strong>Nota:</strong> Alterações podem levar alguns minutos para aparecer no R&A devido à sincronização.
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Salvar Alterações
+                    </button>
+                    <a href="{% url 'simphony:employee_list' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

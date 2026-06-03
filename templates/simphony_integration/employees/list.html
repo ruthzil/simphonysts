@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2><i class="bi bi-people-fill"></i> {{ page_title }}</h2>
+            <a href="{% url 'simphony:employee_create' %}" class="btn btn-primary">
+                <i class="bi bi-person-plus"></i> Novo Funcionário
+            </a>
+        </div>
+        <hr>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr><th>Object Num</th><th>Nome</th><th>Email</th><th>Ações</th</tr>
+                        </thead>
+                        <tbody>
+                            {% for emp in employees %}
+                            <tr>
+                                <td>{{ emp.objectNum }}</td>
+                                <td>{{ emp.firstName }} {{ emp.lastName }}</td>
+                                <td>{{ emp.email|default:"-" }}</td>
+                                <td>
+                                    <a href="{% url 'simphony:employee_detail' emp.objectNum %}" class="btn btn-sm btn-info">Ver</a>
+                                    <a href="{% url 'simphony:employee_update' emp.objectNum %}" class="btn btn-sm btn-warning">Editar</a>
+                                    <a href="{% url 'simphony:employee_delete' emp.objectNum %}" class="btn btn-sm btn-danger">Excluir</a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center">Nenhum funcionário encontrado</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

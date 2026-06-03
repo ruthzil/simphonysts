@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-md-6 mx-auto">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <i class="bi bi-exclamation-triangle-fill display-1 text-warning"></i>
+                <h4>Confirmar Exclusão</h4>
+                <p>Excluir definição <strong>{{ obj_num }}</strong>?</p>
+                <form method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Confirmar</button>
+                    <a href="{% url 'simphony:menu_item_def' %}" class="btn btn-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

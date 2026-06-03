@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Usuários Cadastrados - Simphony{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-people"></i> Usuários Cadastrados</h2>
+        <a href="{% url 'simphony_integration:cadastrar' %}" class="btn btn-primary">
+            <i class="bi bi-person-plus"></i> Novo Usuário
+        </a>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Usuário</th>
+                            <th>E-mail</th>
+                            <th>Superusuário</th>
+                            <th>Ativo</th>
+                            <th>Data de Cadastro</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for usuario in usuarios %}
+                        <tr>
+                            <td>{{ usuario.id }}</td>
+                            <td>
+                                <i class="bi bi-person-circle"></i> 
+                                {{ usuario.username }}
+                            </td>
+                            <td>
+                                <i class="bi bi-envelope"></i> 
+                                {{ usuario.email }}
+                            </td>
+                            <td>
+                                {% if usuario.is_superuser %}
+                                    <span class="badge bg-danger">Sim</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Não</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if usuario.is_active %}
+                                    <span class="badge bg-success">Ativo</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Inativo</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ usuario.date_joined|date:"d/m/Y H:i" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <i class="bi bi-info-circle"></i> 
+                                Nenhum usuário cadastrado ainda.
+                                <br>
+                                <a href="{% url 'simphony_integration:cadastrar' %}" class="btn btn-sm btn-primary mt-2">
+                                    Cadastrar primeiro usuário
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

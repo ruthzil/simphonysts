@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block title %}Início - Simphony STS{% endblock %}
+
+{% block content %}
+<div class="jumbotron">
+    <h1 class="display-4">Bem-vindo ao Simphony STS Integration</h1>
+    <p class="lead">Sistema de integração com Oracle Simphony POS</p>
+    <hr class="my-4">
+    <p>Gerencie suas integrações, configure parâmetros e monitore o status.</p>
+    <a class="btn btn-primary btn-lg" href="{% url 'simphony_integration:dashboard' %}" role="button">
+        Acessar Dashboard
+    </a>
+</div>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Histórico de Menu Items{% endblock %}
+{% block content %}
+<h1 class="mb-4"><i class="bi bi-clock-history"></i> Histórico de Menu Items</h1>
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Data/Hora</th>
+                <th>Item</th>
+                <th>Simphony ID</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.criado_em|date:"d/m/Y H:i:s" }}</td>
+                <td>{{ log.nome_item }}</td>
+                <td>{{ log.simphony_id|default:"N/A" }}</td>
+                <td>
+                    {% if log.status_code == 200 or log.status_code == 201 %}
+                    <span class="badge bg-success">Sucesso</span>
+                    {% else %}
+                    <span class="badge bg-danger">Erro {{ log.status_code }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center">Nenhum histórico encontrado</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

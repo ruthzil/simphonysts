@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12 text-center">
+        <h1 class="display-4">
+            <i class="bi bi-box-seam text-primary"></i> 
+            Simphony STS Integration Platform
+        </h1>
+        <p class="lead">Plataforma completa para gestão de funcionários e menu items no Oracle Simphony EMC</p>
+        <hr>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center">
+                <i class="bi bi-people-fill display-1 text-primary"></i>
+                <h5 class="mt-3">Gestão de Funcionários</h5>
+                <p>Cadastre, edite e gerencie todos os funcionários do sistema Simphony.</p>
+                <a href="{% url 'simphony:employee_list' %}" class="btn btn-primary">
+                    <i class="bi bi-person-plus"></i> Gerenciar
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center">
+                <i class="bi bi-grid-3x3-gap-fill display-1 text-success"></i>
+                <h5 class="mt-3">Menu Item Master</h5>
+                <p>Gerencie os itens do cardápio mestre do sistema.</p>
+                <a href="{% url 'simphony:menu_item_master' %}" class="btn btn-success">
+                    <i class="bi bi-plus-circle"></i> Gerenciar
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center">
+                <i class="bi bi-speedometer2 display-1 text-info"></i>
+                <h5 class="mt-3">Dashboard</h5>
+                <p>Visualize indicadores e status do sistema em tempo real.</p>
+                <a href="{% url 'simphony:dashboard' %}" class="btn btn-info text-white">
+                    <i class="bi bi-graph-up"></i> Ver Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
