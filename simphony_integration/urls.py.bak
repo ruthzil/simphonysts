@@ -1,0 +1,33 @@
+from django.urls import path
+from . import views
+
+app_name = 'simphony_integration'
+
+urlpatterns = [
+    # Dashboard
+    path('', views.index, name='index'),
+    path('dashboard/', views.dashboard, name='dashboard'),
+    path('settings/', views.settings, name='settings'),
+    
+    # Employees CRUD
+    path('employees/', views.employee_list, name='employee_list'),
+    path('employees/create/', views.employee_create, name='employee_create'),
+    path('employees/<int:object_num>/', views.employee_detail, name='employee_detail'),
+    path('employees/<int:object_num>/update/', views.employee_update, name='employee_update'),
+    path('employees/<int:object_num>/delete/', views.employee_delete, name='employee_delete'),
+    
+    # Menu Items CRUD
+    path('menu-items/', views.menu_list, name='menu_list'),
+    path('menu-items/create/', views.menu_create, name='menu_create'),
+    path('menu-items/<int:object_num>/', views.menu_detail, name='menu_detail'),
+    path('menu-items/<int:object_num>/update/', views.menu_update, name='menu_update'),
+    path('menu-items/<int:object_num>/delete/', views.menu_delete, name='menu_delete'),
+    
+    # Logs
+    path('sync-logs/', views.sync_logs, name='sync_logs'),
+    path('menu-item-logs/', views.menu_item_logs, name='menu_item_logs'),
+    
+    # Aliases
+    path('usuarios-simphony/', views.employee_list, name='listar_usuarios_simphony'),
+    path('menu-items-simphony/', views.menu_list, name='listar_menu_items'),
+]

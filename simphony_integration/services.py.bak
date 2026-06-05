@@ -1,0 +1,361 @@
+import requests
+import json
+import base64
+import hashlib
+import random
+import string
+from django.conf import settings
+from datetime import datetime, timedelta
+
+class SimphonyAPIService:
+    """Serviço para interagir com a API do Oracle Simphony usando OAuth2 PKCE"""
+    
+    def __init__(self):
+        self.oidc_url = settings.OIDC_AUTHORITY_URL
+        self.client_id = settings.CLIENT_ID
+        self.username = settings.USERNAME
+        self.password = settings.PASSWORD
+        self.org_short_name = settings.ORG_SHORT_NAME
+        self.ccapi_url = settings.CCAPI_URL
+        self.sts_api_url = settings.STS_API_URL
+        self.hier_unit_id = settings.HIER_UNIT_ID
+        self.access_token = None
+        self.refresh_token = None
+        self.token_expiry = None
+        self.session = None
+    
+    def _create_random_string(self, length):
+        chars = string.ascii_letters + string.digits
+        return ''.join(random.choice(chars) for _ in range(length))
+    
+    def _generate_pkce_codes(self):
+        code_verifier = self._create_random_string(random.randint(43, 128))
+        sha256_hash = hashlib.sha256(code_verifier.encode()).digest()
+        code_challenge = base64.urlsafe_b64encode(sha256_hash).decode().rstrip('=')
+        return code_verifier, code_challenge
+    
+    def get_access_token(self):
+        if self.access_token and self.token_expiry and datetime.now() < self.token_expiry:
+            return self.access_token
+        
+        try:
+            self.session = requests.Session()
+            code_verifier, code_challenge = self._generate_pkce_codes()
+            
+            auth_url = f"{self.oidc_url}/oidc-provider/v1/oauth2/authorize"
+            auth_params = {
+                'client_id': self.client_id,
+                'response_type': 'code',
+                'scope': 'openid',
+                'state': '999',
+                'redirect_uri': 'apiaccount://callback',
+                'code_challenge': code_challenge,
+                'code_challenge_method': 'S256'
+            }
+            self.session.get(auth_url, params=auth_params, timeout=30)
+            
+            signin_url = f"{self.oidc_url}/oidc-provider/v1/oauth2/signin"
+            signin_data = {
+                'username': self.username,
+                'password': self.password,
+                'orgname': self.org_short_name
+            }
+            signin_response = self.session.post(signin_url, data=signin_data, timeout=30)
+            signin_json = signin_response.json()
+            redirect_url = signin_json.get('redirectUrl', '')
+            
+            if 'code=' not in redirect_url:
+                return None
+            
+            auth_code = redirect_url.split('code=')[1].split('&')[0]
+            
+            token_url = f"{self.oidc_url}/oidc-provider/v1/oauth2/token"
+            token_data = {
+                'grant_type': 'authorization_code',
+                'code': auth_code,
+                'client_id': self.client_id,
+                'code_verifier': code_verifier,
+                'redirect_uri': 'apiaccount://callback'
+            }
+            token_response = self.session.post(token_url, data=token_data, timeout=30)
+            token_json = token_response.json()
+            
+            self.access_token = token_json.get('id_token')
+            self.refresh_token = token_json.get('refresh_token')
+            expires_in = token_json.get('expires_in', 1209600)
+            self.token_expiry = datetime.now() + timedelta(seconds=expires_in - 60)
+            
+            return self.access_token
+            
+        except Exception as e:
+            print(f"Erro ao obter token: {e}")
+            return None
+    
+    def _get_headers(self, token=None):
+        """Retorna headers para requisição"""
+        if not token:
+            token = self.get_access_token()
+        return {
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+    
+    def test_connection(self):
+        """Testa se a API está conectada e funcionando"""
+        try:
+            token = self.get_access_token()
+            if token:
+                headers = self._get_headers(token)
+                url = f"{self.ccapi_url}/employees/getEmployees"
+                response = requests.post(url, headers=headers, json={}, timeout=10)
+                return response.status_code == 200
+            return False
+        except Exception:
+            return False
+    
+    def _make_request(self, method, endpoint, data=None, params=None):
+        """Fazer requisição autenticada para a API"""
+        token = self.get_access_token()
+        if not token:
+            return None
+        
+        headers = self._get_headers(token)
+        url = f"{self.ccapi_url}{endpoint}"
+        
+        try:
+            if method == 'GET':
+                response = requests.get(url, headers=headers, params=params, timeout=30)
+            else:
+                response = requests.post(url, headers=headers, json=data, timeout=30)
+            
+            if response.status_code in [200, 201]:
+                return response.json()
+            else:
+                print(f"Erro {response.status_code}: {response.text}")
+                return None
+        except Exception as e:
+            print(f"Erro na requisição: {e}")
+            return None
+    
+    # ========== EMPLOYEES CRUD ==========
+    
+    def get_employees(self, hier_unit_id=None):
+        """Listar funcionários"""
+        endpoint = "/employees/getEmployees"
+        data = {"includeAll": "detailed"}
+        if hier_unit_id:
+            data["hierUnitId"] = hier_unit_id
+        
+        result = self._make_request('POST', endpoint, data=data)
+        if result:
+            return result.get('items', [])
+        return None
+    
+    def get_employee(self, obj_num):
+        """Obter um funcionário específico"""
+        employees = self.get_employees()
+        if employees:
+            for emp in employees:
+                if emp.get('objectNum') == obj_num:
+                    return emp
+        return None
+    
+    def create_employee(self, employee_data):
+        """Criar novo funcionário"""
+        endpoint = "/employees/employees"
+        return self._make_request('POST', endpoint, data=employee_data)
+    
+    def update_employee(self, obj_num, employee_data):
+        """Atualizar funcionário"""
+        endpoint = "/employees/updateEmployees"
+        employee_data['objectNum'] = obj_num
+        return self._make_request('POST', endpoint, data=employee_data)
+    
+    def delete_employee(self, obj_num):
+        """Excluir funcionário"""
+        endpoint = "/employees/deleteEmployees"
+        data = {"objectNum": obj_num}
+        return self._make_request('POST', endpoint, data=data)
+    
+    # ========== MENU ITEMS MASTER ==========
+    
+    def get_menu_items(self, hier_unit_id=None):
+        """Listar itens do menu master"""
+        endpoint = "/menuItems/getMenuItems"
+        data = {"includeAll": "detailed"}
+        if hier_unit_id:
+            data["hierUnitId"] = hier_unit_id
+        
+        result = self._make_request('POST', endpoint, data=data)
+        if result:
+            return result.get('items', [])
+        return None
+    
+    def get_menu_item(self, obj_num):
+        """Obter um item específico"""
+        items = self.get_menu_items()
+        if items:
+            for item in items:
+                if item.get('objectNum') == obj_num:
+                    return item
+        return None
+    
+    def create_menu_item(self, item_data):
+        """Criar novo item do menu master"""
+        endpoint = "/menuItems/menuItems"
+        return self._make_request('POST', endpoint, data=item_data)
+    
+    def update_menu_item(self, obj_num, item_data):
+        """Atualizar item do menu master"""
+        endpoint = "/menuItems/updateMenuItems"
+        item_data['objectNum'] = obj_num
+        return self._make_request('POST', endpoint, data=item_data)
+    
+    def delete_menu_item(self, obj_num):
+        """Excluir item do menu master"""
+        endpoint = "/menuItems/deleteMenuItems"
+        data = {"objectNum": obj_num}
+        return self._make_request('POST', endpoint, data=data)
+    
+    # ========== MENU ITEM DEFINITIONS ==========
+    
+    def get_menu_item_definitions(self):
+        """Obtém definições de menu items"""
+        endpoint = "/menuItemDefinitions/getMenuItemDefinitions"
+        result = self._make_request('POST', endpoint, data={})
+        if result:
+            return result.get('items', [])
+        return None
+    
+    def get_menu_item_definition(self, obj_num):
+        """Obtém definição específica de menu item"""
+        definitions = self.get_menu_item_definitions()
+        if definitions:
+            for definition in definitions:
+                if definition.get('objectNum') == obj_num:
+                    return definition
+        return None
+    
+    def create_menu_item_definition(self, payload):
+        """Cria definição de menu item"""
+        endpoint = "/menuItemDefinitions/menuItemDefinitions"
+        return self._make_request('POST', endpoint, data=payload)
+    
+    def update_menu_item_definition(self, obj_num, payload):
+        """Atualiza definição de menu item"""
+        endpoint = "/menuItemDefinitions/updateMenuItemDefinitions"
+        payload['objectNum'] = obj_num
+        return self._make_request('POST', endpoint, data=payload)
+    
+    def delete_menu_item_definition(self, obj_num):
+        """Exclui definição de menu item"""
+        endpoint = "/menuItemDefinitions/deleteMenuItemDefinitions"
+        data = {'objectNum': obj_num}
+        return self._make_request('POST', endpoint, data=data)
+    
+    # ========== MENU ITEM PRICES ==========
+    
+    def get_menu_item_prices(self):
+        """Obtém preços de menu items"""
+        endpoint = "/menuItemPrices/getMenuItemPrices"
+        result = self._make_request('POST', endpoint, data={})
+        if result:
+            return result.get('items', [])
+        return None
+    
+    def get_menu_item_price(self, obj_num):
+        """Obtém preço específico de menu item"""
+        prices = self.get_menu_item_prices()
+        if prices:
+            for price in prices:
+                if price.get('objectNum') == obj_num:
+                    return price
+        return None
+    
+    def create_menu_item_price(self, payload):
+        """Cria preço para menu item"""
+        endpoint = "/menuItemPrices/menuItemPrices"
+        return self._make_request('POST', endpoint, data=payload)
+    
+    def update_menu_item_price(self, obj_num, payload):
+        """Atualiza preço de menu item"""
+        endpoint = "/menuItemPrices/updateMenuItemPrices"
+        payload['objectNum'] = obj_num
+        return self._make_request('POST', endpoint, data=payload)
+    
+    def delete_menu_item_price(self, obj_num):
+        """Exclui preço de menu item"""
+        endpoint = "/menuItemPrices/deleteMenuItemPrices"
+        data = {'objectNum': obj_num}
+        return self._make_request('POST', endpoint, data=data)
+    
+    # ========== HIERARCHY ==========
+    
+    def get_hierarchy(self):
+        """Obter hierarquia completa"""
+        endpoint = "/hierarchy/getHierarchy"
+        result = self._make_request('POST', endpoint, data={})
+        return result
+    
+    def get_locations(self):
+        """Listar locations"""
+        endpoint = "/hierarchy/getLocations"
+        result = self._make_request('POST', endpoint, data={})
+        if result:
+            return result.get('items', [])
+        return None
+    
+    def get_revenue_centers(self, loc_hier_unit_id=None):
+        """Listar revenue centers (zones)"""
+        endpoint = "/hierarchy/getRevenueCenters"
+        data = {"includeAll": "detailed"}
+        if loc_hier_unit_id:
+            data["locHierUnitId"] = loc_hier_unit_id
+        
+        result = self._make_request('POST', endpoint, data=data)
+        if result:
+            return result.get('items', [])
+        return None
+    
+    # ========== SUPPORTING DATA ==========
+    
+    def get_tax_categories(self):
+        """Obtém categorias de imposto"""
+        endpoint = "/taxCategories/getTaxCategories"
+        result = self._make_request('POST', endpoint, data={})
+        if result:
+            return result.get('items', [])
+        return None
+    
+    def get_departments(self):
+        """Obtém departamentos"""
+        endpoint = "/departments/getDepartments"
+        result = self._make_request('POST', endpoint, data={})
+        if result:
+            return result.get('items', [])
+        return None
+    
+    def get_price_levels(self):
+        """Obtém níveis de preço"""
+        endpoint = "/priceLevels/getPriceLevels"
+        result = self._make_request('POST', endpoint, data={})
+        if result:
+            return result.get('items', [])
+        return None
+    
+    def get_roles(self):
+        """Listar roles/papéis"""
+        endpoint = "/employees/getRoles"
+        result = self._make_request('POST', endpoint, data={})
+        if result:
+            return result.get('items', [])
+        return None
+    
+    def get_employee_classes(self):
+        """Listar classes de funcionários"""
+        endpoint = "/employees/getClasses"
+        result = self._make_request('POST', endpoint, data={})
+        if result:
+            return result.get('items', [])
+        return None

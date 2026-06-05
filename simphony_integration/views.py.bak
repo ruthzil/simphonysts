@@ -1,0 +1,391 @@
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.http import JsonResponse
+from django.conf import settings
+from .services import SimphonyAPIService
+from .models import MenuItemLog, SyncLog
+import json
+
+def index(request):
+    context = {
+        'title': 'Simphony Integration',
+        'message': 'Bem-vindo ao sistema de integração Simphony'
+    }
+    return render(request, 'simphony_integration/index.html', context)
+
+@login_required
+def dashboard(request):
+    api_service = SimphonyAPIService()
+    api_status = "Desconectado"
+    
+    try:
+        test = api_service.test_connection()
+        if test.get('success'):
+            api_status = "Conectado"
+    except:
+        pass
+    
+    # Contagens
+    employees_result = api_service.get_employees()
+    menu_result = api_service.get_menu_items()
+    
+    context = {
+        'title': 'Dashboard',
+        'user': request.user,
+        'api_status': api_status,
+        'employee_count': employees_result.get('count', 0) if employees_result.get('success') else 0,
+        'menu_count': menu_result.get('count', 0) if menu_result.get('success') else 0,
+    }
+    return render(request, 'simphony_integration/dashboard.html', context)
+
+# ========== EMPLOYEES CRUD VIEWS ==========
+
+@login_required
+def employee_list(request):
+    """Listar todos os funcionários"""
+    api_service = SimphonyAPIService()
+    
+    # Filtros
+    hier_unit_id = request.GET.get('hier_unit_id')
+    search = request.GET.get('search', '')
+    
+    result = api_service.get_employees(hier_unit_id=hier_unit_id)
+    
+    # Obter hierarquia para filtros
+    hierarchy = api_service.get_hierarchy()
+    locations = api_service.get_locations()
+    
+    context = {
+        'title': 'Funcionários',
+        'result': result,
+        'hierarchy': hierarchy.get('hierarchy', {}) if hierarchy.get('success') else {},
+        'locations': locations.get('locations', []) if locations.get('success') else [],
+        'search': search,
+        'selected_hier_unit': hier_unit_id,
+    }
+    return render(request, 'simphony_integration/employees/list.html', context)
+
+@login_required
+def employee_detail(request, object_num):
+    """Visualizar detalhes de um funcionário"""
+    api_service = SimphonyAPIService()
+    result = api_service.get_employee(object_num)
+    
+    context = {
+        'title': 'Detalhes do Funcionário',
+        'result': result,
+    }
+    return render(request, 'simphony_integration/employees/detail.html', context)
+
+@login_required
+def employee_create(request):
+    """Formulário para criar funcionário"""
+    api_service = SimphonyAPIService()
+    
+    if request.method == 'POST':
+        # Construir dados do funcionário
+        employee_data = {
+            'objectNum': int(request.POST.get('object_num')),
+            'firstName': request.POST.get('first_name'),
+            'lastName': request.POST.get('last_name'),
+            'checkName': request.POST.get('check_name', ''),
+            'email': request.POST.get('email'),
+            'languageObjNum': int(request.POST.get('language_obj_num', 1)),
+            'userName': request.POST.get('username'),
+        }
+        
+        # Adicionar roles se especificadas
+        role_obj_num = request.POST.get('role_obj_num')
+        hier_unit_id = request.POST.get('hier_unit_id')
+        if role_obj_num and hier_unit_id:
+            employee_data['roles'] = [{
+                'hierUnitId': int(hier_unit_id),
+                'roleObjNum': int(role_obj_num)
+            }]
+        
+        # Adicionar propriedades
+        property_hier_unit = request.POST.get('property_hier_unit_id')
+        emp_class = request.POST.get('emp_class_obj_num')
+        if property_hier_unit and emp_class:
+            employee_data['properties'] = [{
+                'propertyHierUnitId': int(property_hier_unit),
+                'empClassObjNum': int(emp_class)
+            }]
+        
+        result = api_service.create_employee(employee_data)
+        
+        if result.get('success'):
+            messages.success(request, f"Funcionário {employee_data['firstName']} {employee_data['lastName']} criado com sucesso!")
+            return redirect('simphony_integration:employee_list')
+        else:
+            messages.error(request, f"Erro ao criar funcionário: {result.get('error')}")
+    
+    # Dados para o formulário
+    locations = api_service.get_locations()
+    roles = api_service.get_roles()
+    emp_classes = api_service.get_employee_classes()
+    languages = [{'id': 1, 'name': 'English'}, {'id': 2, 'name': 'Português'}, {'id': 3, 'name': 'Español'}]
+    
+    context = {
+        'title': 'Novo Funcionário',
+        'locations': locations.get('locations', []) if locations.get('success') else [],
+        'roles': roles.get('roles', []) if roles.get('success') else [],
+        'emp_classes': emp_classes.get('classes', []) if emp_classes.get('success') else [],
+        'languages': languages,
+    }
+    return render(request, 'simphony_integration/employees/form.html', context)
+
+@login_required
+def employee_update(request, object_num):
+    """Formulário para atualizar funcionário"""
+    api_service = SimphonyAPIService()
+    
+    if request.method == 'POST':
+        employee_data = {
+            'objectNum': object_num,
+            'firstName': request.POST.get('first_name'),
+            'lastName': request.POST.get('last_name'),
+            'checkName': request.POST.get('check_name', ''),
+            'email': request.POST.get('email'),
+        }
+        
+        result = api_service.update_employee(employee_data)
+        
+        if result.get('success'):
+            messages.success(request, f"Funcionário atualizado com sucesso!")
+            return redirect('simphony_integration:employee_detail', object_num=object_num)
+        else:
+            messages.error(request, f"Erro ao atualizar: {result.get('error')}")
+    
+    # Obter dados atuais
+    result = api_service.get_employee(object_num)
+    employee = result.get('employee', {}) if result.get('success') else {}
+    
+    context = {
+        'title': 'Editar Funcionário',
+        'employee': employee,
+        'object_num': object_num,
+    }
+    return render(request, 'simphony_integration/employees/form.html', context)
+
+@login_required
+def employee_delete(request, object_num):
+    """Excluir funcionário"""
+    api_service = SimphonyAPIService()
+    
+    if request.method == 'POST':
+        result = api_service.delete_employee(object_num)
+        
+        if result.get('success'):
+            messages.success(request, "Funcionário excluído com sucesso!")
+        else:
+            messages.error(request, f"Erro ao excluir: {result.get('error')}")
+        
+        return redirect('simphony_integration:employee_list')
+    
+    result = api_service.get_employee(object_num)
+    employee = result.get('employee', {}) if result.get('success') else {}
+    
+    context = {
+        'title': 'Excluir Funcionário',
+        'employee': employee,
+        'object_num': object_num,
+    }
+    return render(request, 'simphony_integration/employees/delete.html', context)
+
+# ========== MENU ITEMS CRUD VIEWS ==========
+
+@login_required
+def menu_list(request):
+    """Listar todos os itens do menu"""
+    api_service = SimphonyAPIService()
+    
+    hier_unit_id = request.GET.get('hier_unit_id')
+    search = request.GET.get('search', '')
+    
+    result = api_service.get_menu_items(hier_unit_id=hier_unit_id)
+    
+    # Filtrar por nome se houver search
+    if search and result.get('success'):
+        result['menu_items'] = [item for item in result['menu_items'] 
+                                if search.lower() in str(item.get('name', '')).lower()]
+        result['count'] = len(result['menu_items'])
+    
+    hierarchy = api_service.get_hierarchy()
+    locations = api_service.get_locations()
+    
+    context = {
+        'title': 'Menu Items',
+        'result': result,
+        'hierarchy': hierarchy.get('hierarchy', {}) if hierarchy.get('success') else {},
+        'locations': locations.get('locations', []) if locations.get('success') else [],
+        'search': search,
+        'selected_hier_unit': hier_unit_id,
+    }
+    return render(request, 'simphony_integration/menu_items/list.html', context)
+
+@login_required
+def menu_detail(request, object_num):
+    """Visualizar detalhes de um item do menu"""
+    api_service = SimphonyAPIService()
+    result = api_service.get_menu_item(object_num)
+    
+    context = {
+        'title': 'Detalhes do Menu Item',
+        'result': result,
+    }
+    return render(request, 'simphony_integration/menu_items/detail.html', context)
+
+@login_required
+def menu_create(request):
+    """Formulário para criar item do menu"""
+    api_service = SimphonyAPIService()
+    
+    if request.method == 'POST':
+        # Construir dados do menu item
+        item_data = {
+            'objectNum': int(request.POST.get('object_num')),
+            'name': {
+                'en-US': request.POST.get('name_en'),
+                'pt-BR': request.POST.get('name_pt', request.POST.get('name_en')),
+            },
+            'hierUnitId': int(request.POST.get('hier_unit_id')),
+            'familyGroupObjectNum': int(request.POST.get('family_group_obj_num', 1)),
+            'majorGroupObjectNum': int(request.POST.get('major_group_obj_num', 1)),
+        }
+        
+        # Adicionar preço se especificado
+        price = request.POST.get('price')
+        if price:
+            item_data['prices'] = [{
+                'price': float(price),
+                'prepCost': float(request.POST.get('prep_cost', 0)),
+            }]
+        
+        result = api_service.create_menu_item(item_data)
+        
+        # Registrar log
+        MenuItemLog.objects.create(
+            nome_item=request.POST.get('name_en'),
+            payload_enviado=item_data,
+            resposta_api=result,
+            status_code=200 if result.get('success') else 400
+        )
+        
+        if result.get('success'):
+            messages.success(request, f"Menu Item '{request.POST.get('name_en')}' criado com sucesso!")
+            return redirect('simphony_integration:menu_list')
+        else:
+            messages.error(request, f"Erro ao criar item: {result.get('error')}")
+    
+    # Dados para o formulário
+    locations = api_service.get_locations()
+    item_classes = api_service.get_menu_item_classes()
+    
+    context = {
+        'title': 'Novo Menu Item',
+        'locations': locations.get('locations', []) if locations.get('success') else [],
+        'item_classes': item_classes.get('classes', []) if item_classes.get('success') else [],
+    }
+    return render(request, 'simphony_integration/menu_items/form.html', context)
+
+@login_required
+def menu_update(request, object_num):
+    """Formulário para atualizar item do menu"""
+    api_service = SimphonyAPIService()
+    
+    if request.method == 'POST':
+        item_data = {
+            'objectNum': object_num,
+            'name': {
+                'en-US': request.POST.get('name_en'),
+            },
+            'hierUnitId': int(request.POST.get('hier_unit_id')),
+        }
+        
+        price = request.POST.get('price')
+        if price:
+            item_data['prices'] = [{'price': float(price)}]
+        
+        result = api_service.update_menu_item(item_data)
+        
+        if result.get('success'):
+            messages.success(request, "Menu Item atualizado com sucesso!")
+            return redirect('simphony_integration:menu_detail', object_num=object_num)
+        else:
+            messages.error(request, f"Erro ao atualizar: {result.get('error')}")
+    
+    result = api_service.get_menu_item(object_num)
+    menu_item = result.get('menu_item', {}) if result.get('success') else {}
+    locations = api_service.get_locations()
+    
+    context = {
+        'title': 'Editar Menu Item',
+        'menu_item': menu_item,
+        'locations': locations.get('locations', []) if locations.get('success') else [],
+        'object_num': object_num,
+    }
+    return render(request, 'simphony_integration/menu_items/form.html', context)
+
+@login_required
+def menu_delete(request, object_num):
+    """Excluir item do menu"""
+    api_service = SimphonyAPIService()
+    
+    if request.method == 'POST':
+        result = api_service.delete_menu_item(object_num)
+        
+        if result.get('success'):
+            messages.success(request, "Menu Item excluído com sucesso!")
+        else:
+            messages.error(request, f"Erro ao excluir: {result.get('error')}")
+        
+        return redirect('simphony_integration:menu_list')
+    
+    result = api_service.get_menu_item(object_num)
+    menu_item = result.get('menu_item', {}) if result.get('success') else {}
+    
+    context = {
+        'title': 'Excluir Menu Item',
+        'menu_item': menu_item,
+        'object_num': object_num,
+    }
+    return render(request, 'simphony_integration/menu_items/delete.html', context)
+
+# ========== SYNC & HISTORY ==========
+
+@login_required
+def sync_logs(request):
+    """Visualizar logs de sincronização"""
+    logs = SyncLog.objects.all().order_by('-criado_em')[:50]
+    
+    context = {
+        'title': 'Logs de Sincronização',
+        'logs': logs,
+    }
+    return render(request, 'simphony_integration/sync_logs.html', context)
+
+@login_required
+def menu_item_logs(request):
+    """Visualizar histórico de envios de menu items"""
+    logs = MenuItemLog.objects.all().order_by('-criado_em')[:50]
+    
+    context = {
+        'title': 'Histórico de Menu Items',
+        'logs': logs,
+    }
+    return render(request, 'simphony_integration/menu_item_logs.html', context)
+
+# Aliases para compatibilidade
+def listar_usuarios_simphony(request):
+    return employee_list(request)
+
+def listar_menu_items(request):
+    return menu_list(request)
+
+def settings_view(request):
+    return render(request, 'simphony_integration/settings.html', {'title': 'Configurações'})
+
+def settings(request):
+    return settings_view(request)
